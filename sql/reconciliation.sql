@@ -8,22 +8,22 @@
 --   status             — разный статус (например, у нас success, у PSP failed)
 --   amount             — разная сумма
 --   fee                — разная комиссия
--- и сумму расхождения в евро.
+-- и сумму расхождения в рублях.
 
 WITH recon AS (
     SELECT
         COALESCE(l.txn_id,   p.txn_id)   AS txn_id,
         COALESCE(l.txn_date, p.txn_date) AS txn_date,
         COALESCE(l.psp,      p.psp)      AS psp,
-        l.amount_eur AS ledger_amount, p.amount_eur AS psp_amount,
-        l.fee_eur    AS ledger_fee,    p.fee_eur    AS psp_fee,
+        l.amount_rub AS ledger_amount, p.amount_rub AS psp_amount,
+        l.fee_rub    AS ledger_fee,    p.fee_rub    AS psp_fee,
         l.status     AS ledger_status, p.status     AS psp_status,
         CASE
             WHEN p.txn_id IS NULL                         THEN 'missing_in_psp'
             WHEN l.txn_id IS NULL                         THEN 'missing_in_ledger'
             WHEN l.status <> p.status                     THEN 'status'
-            WHEN ABS(l.amount_eur - p.amount_eur) > 0.01  THEN 'amount'
-            WHEN ABS(l.fee_eur - p.fee_eur) > 0.01        THEN 'fee'
+            WHEN ABS(l.amount_rub - p.amount_rub) > 0.01  THEN 'amount'
+            WHEN ABS(l.fee_rub - p.fee_rub) > 0.01        THEN 'fee'
             ELSE 'matched'
         END AS recon_result
     FROM ledger l
@@ -40,5 +40,5 @@ SELECT
         WHEN 'amount'            THEN ABS(ledger_amount - psp_amount)
         WHEN 'fee'               THEN ABS(ledger_fee - psp_fee)
         ELSE 0
-    END, 2) AS break_amount_eur
+    END, 2) AS break_amount_rub
 FROM recon;

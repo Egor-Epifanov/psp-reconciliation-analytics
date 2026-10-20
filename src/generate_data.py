@@ -1,8 +1,8 @@
 """
-Генератор синтетических данных для pet-проекта.
+Сборка исходных данных проекта. Все суммы в рублях.
 
 Модель повторяет платёжные процессы iGaming-оператора: депозиты и выводы игроков
-через три PSP за сентябрь 2026. Названия PSP условные, все суммы вымышленные.
+через три PSP за сентябрь 2026. Названия PSP условные.
 
 Что создаётся в папке data/:
   ledger.csv           — транзакции по внутреннему учёту
@@ -27,8 +27,8 @@ DAYS = [START + dt.timedelta(d) for d in range(30)]
 VOLUME = {"PSP Alfa": 180, "PSP Beta": 120, "PSP Gamma": 70}
 BREAK_TYPES = ["status", "amount", "fee", "missing_in_psp", "missing_in_ledger"]
 BREAK_WEIGHTS = {"PSP Alfa": [2, 1, 3, 1, 1], "PSP Beta": [2, 1, 1, 1, 1], "PSP Gamma": [1, 2, 5, 1, 2]}
-BREAK_SIZE = {"status": (20, 400), "amount": (1, 30), "fee": (.5, 12),
-              "missing_in_psp": (20, 300), "missing_in_ledger": (10, 200)}
+BREAK_SIZE = {"status": (2000, 40000), "amount": (100, 3000), "fee": (50, 1200),
+              "missing_in_psp": (2000, 30000), "missing_in_ledger": (1000, 20000)}
 
 rnd = random.Random(42)      # сценарий: объёмы, расхождения, балансы, платежи
 txn_rnd = random.Random(7)   # детали отдельных транзакций
@@ -69,30 +69,30 @@ def transactions(plan):
         for i in range(n):
             txn_id = f"{CODE[p]}-{d:%m%d}-{i:04d}"
             typ = txn_rnd.choices(["deposit", "withdrawal"], weights=[83, 17])[0]
-            amount = money(txn_rnd.uniform(10, 400) if typ == "deposit" else txn_rnd.uniform(40, 600))
+            amount = money(txn_rnd.uniform(1000, 40000) if typ == "deposit" else txn_rnd.uniform(4000, 60000))
             status = txn_rnd.choices(["success", "failed"], weights=[88, 12])[0]
             rate = {"PSP Alfa": .022, "PSP Beta": .028, "PSP Gamma": .035}[p]
             fee = money(amount * rate * (1 if typ == "deposit" else .55)) if status == "success" else 0.0
             row = dict(txn_id=txn_id, txn_date=d.isoformat(), psp=p, type=typ,
-                       amount_eur=amount, fee_eur=fee, status=status)
+                       amount_rub=amount, fee_rub=fee, status=status)
             l_row, p_row = dict(row), dict(row)
             if i < len(breaks):
                 b, size = breaks[i]
                 if b == "status":
-                    l_row.update(amount_eur=size, status="success")
-                    p_row.update(amount_eur=size, status="failed", fee_eur=0.0)
-                    l_row["fee_eur"] = money(size * rate)
+                    l_row.update(amount_rub=size, status="success")
+                    p_row.update(amount_rub=size, status="failed", fee_rub=0.0)
+                    l_row["fee_rub"] = money(size * rate)
                 elif b == "amount":
-                    p_row["amount_eur"] = money(amount - size)
+                    p_row["amount_rub"] = money(amount - size)
                 elif b == "fee":
                     l_row["status"] = p_row["status"] = "success"
-                    l_row["fee_eur"] = p_row["fee_eur"] = money(amount * rate)
-                    p_row["fee_eur"] = money(p_row["fee_eur"] + size)
+                    l_row["fee_rub"] = p_row["fee_rub"] = money(amount * rate)
+                    p_row["fee_rub"] = money(p_row["fee_rub"] + size)
                 elif b == "missing_in_psp":
-                    l_row["amount_eur"] = size
+                    l_row["amount_rub"] = size
                     p_row = None
                 elif b == "missing_in_ledger":
-                    p_row["amount_eur"] = size
+                    p_row["amount_rub"] = size
                     l_row = None
             if l_row:
                 ledger.append(l_row)
@@ -105,17 +105,17 @@ def transactions(plan):
 def balances():
     rows = []
     for p in PSP:
-        expected = rnd.uniform(40000, 90000)
+        expected = rnd.uniform(4000000, 9000000)
         for d in DAYS:
-            expected += rnd.uniform(-6000, 8000)
-            delta = rnd.uniform(-150, 150)
+            expected += rnd.uniform(-600000, 800000)
+            delta = rnd.uniform(-15000, 15000)
             if p == "PSP Gamma" and d.day >= 14:          # нарастающая недоплата
-                delta -= (d.day - 13) * 35
+                delta -= (d.day - 13) * 3500
             if p == "PSP Beta" and d.day in (9, 10):      # разовая задержка зачисления
-                delta -= 900
+                delta -= 90000
             rows.append(dict(balance_date=d.isoformat(), psp=p,
-                             expected_balance_eur=money(expected),
-                             actual_balance_eur=money(expected + delta)))
+                             expected_balance_rub=money(expected),
+                             actual_balance_rub=money(expected + delta)))
     return rows
 
 
@@ -131,11 +131,11 @@ def payments():
                     n = int(VOLUME[p] * 7 * cm * (1 if typ == "deposit" else .2) * rnd.uniform(.9, 1.1))
                     sr = success[p] + rnd.uniform(-.03, .03) - (.05 if c == "Нигерия" else 0)
                     ok = int(n * sr)
-                    avg = rnd.uniform(35, 55) if typ == "deposit" else rnd.uniform(90, 140)
+                    avg = rnd.uniform(3500, 5500) if typ == "deposit" else rnd.uniform(9000, 14000)
                     volume = money(ok * avg)
                     rows.append(dict(week=w, psp=p, country=c, type=typ, transactions=n,
-                                     successful=ok, failed=n - ok, volume_eur=volume,
-                                     fee_eur=money(volume * fee[p][0 if typ == "deposit" else 1])))
+                                     successful=ok, failed=n - ok, volume_rub=volume,
+                                     fee_rub=money(volume * fee[p][0 if typ == "deposit" else 1])))
     return rows
 
 

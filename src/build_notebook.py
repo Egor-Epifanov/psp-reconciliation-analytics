@@ -6,7 +6,7 @@ md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
 cells = [
 md("""# Сверка платежей с PSP: учёт против отчётов платёжных систем
 
-Pet-проект на синтетических данных. Модель повторяет ежедневную работу платёжной команды iGaming-оператора: депозиты и выводы игроков через три PSP за сентябрь 2026.
+Собственный проект, все суммы в рублях. Модель повторяет ежедневную работу платёжной команды iGaming-оператора: депозиты и выводы игроков через три PSP за сентябрь 2026.
 
 Что делаю в ноутбуке:
 1. Проверяю качество данных до сверки: дубли, пропуски.
@@ -37,7 +37,7 @@ md("## 1. Качество данных до сверки"),
 code("""checks = pd.DataFrame({
     'дубли txn_id': [ledger.txn_id.duplicated().sum(), psp_report.txn_id.duplicated().sum()],
     'пустые значения': [ledger.isna().sum().sum(), psp_report.isna().sum().sum()],
-    'отрицательные суммы': [(ledger.amount_eur < 0).sum(), (psp_report.amount_eur < 0).sum()],
+    'отрицательные суммы': [(ledger.amount_rub < 0).sum(), (psp_report.amount_rub < 0).sum()],
 }, index=['ledger', 'psp_report'])
 checks"""),
 md("## 2. Сверка SQL-запросом\nЗапрос лежит в `sql/reconciliation.sql`: FULL OUTER JOIN по `txn_id` и классификация каждой транзакции."),
@@ -76,32 +76,32 @@ low[low.match_rate_pct < 99]"""),
 md("""**Вывод.** PSP Gamma даёт большую часть расхождений, хотя проводит меньше всего транзакций, и регулярно опускается ниже 99%. Пик 14–17 сентября: стоит проверить у провайдера, не менялись ли тарифы или формат выгрузки.
 
 Журнал открытых расхождений для разбора:"""),
-code("""breaks.sort_values(['txn_date', 'psp'])[['txn_date', 'psp', 'txn_id', 'recon_result', 'break_amount_eur']].tail(10)"""),
-md("## 3. Контроль балансов на PSP\nДельта = фактический баланс из выписки PSP − ожидаемый по учёту. Порог эскалации: 500 € по модулю."),
-code("""balances['delta_eur'] = (balances.actual_balance_eur - balances.expected_balance_eur).round(2)
-delta = balances.pivot(index='balance_date', columns='psp', values='delta_eur')
+code("""breaks.sort_values(['txn_date', 'psp'])[['txn_date', 'psp', 'txn_id', 'recon_result', 'break_amount_rub']].tail(10)"""),
+md("## 3. Контроль балансов на PSP\nДельта = фактический баланс из выписки PSP − ожидаемый по учёту. Порог эскалации: 50 000 ₽ по модулю."),
+code("""balances['delta_rub'] = (balances.actual_balance_rub - balances.expected_balance_rub).round(2)
+delta = balances.pivot(index='balance_date', columns='psp', values='delta_rub')
 ax = delta.plot(figsize=(10, 4), color=[COLORS[c] for c in delta.columns], lw=2)
-for y in (500, -500):
+for y in (50000, -50000):
     ax.axhline(y, color='#D14343', ls='--', lw=1)
-ax.set_title('Дельта баланса по дням, €', loc='left', fontweight='bold')
+ax.set_title('Дельта баланса по дням, ₽', loc='left', fontweight='bold')
 ax.set_xlabel(''); ax.legend(frameon=False, ncol=3)
 plt.tight_layout(); plt.savefig(CHARTS / 'balance_delta.png'); plt.show()
 
-balances[balances.delta_eur.abs() > 500][['balance_date', 'psp', 'delta_eur']]"""),
+balances[balances.delta_rub.abs() > 50000][['balance_date', 'psp', 'delta_rub']]"""),
 md("""**Вывод.** У PSP Beta разовый провал 9–10 сентября, на следующий день дельта вернулась к норме: похоже на задержку зачисления. У PSP Gamma с 14 сентября дельта стабильно уходит в минус: это систематическая недоплата, по времени совпадающая со всплеском расхождений по комиссиям."""),
 md("## 4. Отчёт для трейдеров"),
 code("""report = pd.read_sql('''
     SELECT psp,
            ROUND(100.0 * SUM(successful) / SUM(transactions), 1) AS success_rate_pct,
-           ROUND(SUM(volume_eur), 0)                             AS volume_eur,
-           ROUND(SUM(fee_eur), 0)                                AS fee_eur,
-           ROUND(100.0 * SUM(fee_eur) / SUM(volume_eur), 2)      AS effective_fee_pct
+           ROUND(SUM(volume_rub), 0)                             AS volume_rub,
+           ROUND(SUM(fee_rub), 0)                                AS fee_rub,
+           ROUND(100.0 * SUM(fee_rub) / SUM(volume_rub), 2)      AS effective_fee_pct
     FROM payments_weekly GROUP BY psp ORDER BY effective_fee_pct''', con)
 report"""),
 code("""fig, axes = plt.subplots(1, 2, figsize=(11, 4))
-vol = payments.pivot_table(index='psp', columns='type', values='volume_eur', aggfunc='sum') / 1000
+vol = payments.pivot_table(index='psp', columns='type', values='volume_rub', aggfunc='sum') / 1e6
 vol[['deposit', 'withdrawal']].plot(kind='bar', stacked=True, ax=axes[0], rot=0, color=['#3BA272', '#F08A24'])
-axes[0].set_title('Оборот по PSP, тыс. €', loc='left', fontweight='bold'); axes[0].set_xlabel('')
+axes[0].set_title('Оборот по PSP, млн ₽', loc='left', fontweight='bold'); axes[0].set_xlabel('')
 axes[0].legend(['депозиты', 'выводы'], frameon=False)
 
 by_country = payments.groupby('country')[['successful', 'transactions']].sum()

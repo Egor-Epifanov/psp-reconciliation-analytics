@@ -1,0 +1,36 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Дашборды PSP</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#fff;--fg:#1F2430;--muted:#6B7280;--line:#E5E7EB;--card:#F7F8FA;--alfa:#2F6FDE;--beta:#8B5CF6;--gamma:#F08A24;--bad:#D14343;--good:#3BA272}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 Inter,"Segoe UI",Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--card);border-radius:10px;padding:12px 14px}.kpi b{display:block;font-size:22px;font-variant-numeric:tabular-nums}.kpi span{color:var(--muted);font-size:12px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;cursor:pointer;font:inherit;display:flex;gap:6px;align-items:center}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}.chip.off{opacity:.4}
+.chip:focus-visible{outline:2px solid var(--alfa);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}.card h2{font-size:15px;margin:0 0 2px}.card p{color:var(--muted);margin:0 0 10px;font-size:12px}
+.chart{position:relative;height:280px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}
+.scroll{max-height:320px;overflow:auto}.tag{padding:2px 8px;border-radius:999px;font-size:12px;background:var(--card)}
+.hint{color:var(--muted);font-size:12px;margin-top:6px}
+.foot{color:var(--muted);font-size:12px;margin-top:18px}a{color:var(--alfa)}
+@media (max-width:520px){.grid{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<h1>Дашборды: сверка платежей с PSP</h1><p class="sub">Собственный проект · SQL + pandas + Chart.js</p>
+<div class="grid"><a class="card" href="recon.html" style="text-decoration:none;color:inherit"><h2>Ежедневная сверка</h2><p>Match rate по дням, расхождения по PSP и типу, журнал</p></a>
+<a class="card" href="balances.html" style="text-decoration:none;color:inherit"><h2>Балансы на PSP</h2><p>Ожидание против факта, порог эскалации</p></a>
+<a class="card" href="payments.html" style="text-decoration:none;color:inherit"><h2>Платёжный отчёт</h2><p>Оборот, доля успешных, эффективная комиссия</p></a></div>
+<div class="foot">Собственный проект · Егор Епифанов · <a href="https://github.com/Egor-Epifanov/psp-reconciliation-analytics" target="_blank">код на GitHub</a></div></div>
+<script>
+const COLORS={'PSP Alfa':'#2F6FDE','PSP Beta':'#8B5CF6','PSP Gamma':'#F08A24'};const PSP=Object.keys(COLORS);
+let active=new Set(PSP);
+function chips(onChange){const el=document.getElementById('filters');PSP.forEach(p=>{const b=document.createElement('button');b.className='chip';b.innerHTML=`<i style="background:${COLORS[p]}"></i>${p}`;b.onclick=()=>{if(active.has(p)){if(active.size>1)active.delete(p)}else active.add(p);b.classList.toggle('off',!active.has(p));onChange()};el.appendChild(b)})}
+Chart.defaults.locale='ru-RU';const fmt=(v,d=0)=>v.toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d});
+Chart.defaults.font.family='Inter,"Segoe UI",Arial,sans-serif';Chart.defaults.color='#6B7280';Chart.defaults.plugins.legend.display=false;
+</script></body></html>
