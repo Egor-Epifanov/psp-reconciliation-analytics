@@ -6,7 +6,7 @@ md, code = nbf.v4.new_markdown_cell, nbf.v4.new_code_cell
 cells = [
 md("""# Сверка платежей с PSP: учёт против отчётов платёжных систем
 
-Собственный проект, все суммы в рублях. Модель повторяет ежедневную работу платёжной команды iGaming-оператора: депозиты и выводы игроков через три PSP за сентябрь 2026.
+Собственный проект, все суммы в рублях. Модель повторяет ежедневную работу платёжной команды российского онлайн-букмекера: депозиты и выводы игроков через три PSP за сентябрь 2026.
 
 Что делаю в ноутбуке:
 1. Проверяю качество данных до сверки: дубли, пропуски.
@@ -34,7 +34,8 @@ balances = pd.read_csv(DATA / 'balances.csv')
 payments = pd.read_csv(DATA / 'payments_weekly.csv')
 print(f'Учёт: {len(ledger):,} строк · отчёты PSP: {len(psp_report):,} строк'.replace(',', ' '))"""),
 md("## 1. Качество данных до сверки"),
-code("""checks = pd.DataFrame({
+code("""# Дубли по txn_id проверяю до сверки: при merge/JOIN они размножили бы строки
+checks = pd.DataFrame({
     'дубли txn_id': [ledger.txn_id.duplicated().sum(), psp_report.txn_id.duplicated().sum()],
     'пустые значения': [ledger.isna().sum().sum(), psp_report.isna().sum().sum()],
     'отрицательные суммы': [(ledger.amount_rub < 0).sum(), (psp_report.amount_rub < 0).sum()],
@@ -104,15 +105,15 @@ vol[['deposit', 'withdrawal']].plot(kind='bar', stacked=True, ax=axes[0], rot=0,
 axes[0].set_title('Оборот по PSP, млн ₽', loc='left', fontweight='bold'); axes[0].set_xlabel('')
 axes[0].legend(['депозиты', 'выводы'], frameon=False)
 
-by_country = payments.groupby('country')[['successful', 'transactions']].sum()
-(100 * by_country.successful / by_country.transactions).sort_values().plot(kind='barh', ax=axes[1], color='#2F6FDE')
-axes[1].set_title('Доля успешных платежей по странам, %', loc='left', fontweight='bold')
+by_region = payments.groupby('region')[['successful', 'transactions']].sum()
+(100 * by_region.successful / by_region.transactions).sort_values().plot(kind='barh', ax=axes[1], color='#2F6FDE')
+axes[1].set_title('Доля успешных платежей по регионам, %', loc='left', fontweight='bold')
 axes[1].set_xlim(80, 92); axes[1].set_ylabel('')
 plt.tight_layout(); plt.savefig(CHARTS / 'payments_report.png'); plt.show()"""),
 md("""**Выводы для стейкхолдеров**
 - PSP Alfa — самый дешёвый и надёжный провайдер: больше всего оборота и самая низкая эффективная комиссия.
-- PSP Gamma почти в 1,6 раза дороже Alfa и теряет каждую пятую транзакцию: стоит пересмотреть долю трафика или условия договора.
-- В Нигерии самая низкая доля успешных платежей: отдельно разобрать причины отказов."""),
+- PSP Gamma почти в 1,6 раза дороже Alfa, и у неё отклоняется каждый пятый платёж (80,2% успешных против 91,9% у Alfa). Отказ не равен потере денег: часть отказов на стороне игрока. Стоит пересмотреть долю трафика или условия договора.
+- В регионах за пределами Москвы и Петербурга доля успешных платежей ниже (84,5% против ~89%). Провал есть у всех трёх PSP, значит дело не в провайдере: нужно разобрать коды отказов банков-эмитентов."""),
 ]
 
 nb = nbf.v4.new_notebook(cells=cells, metadata={"kernelspec": {"name": "python3", "display_name": "Python 3", "language": "python"},

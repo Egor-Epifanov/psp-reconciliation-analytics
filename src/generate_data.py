@@ -1,14 +1,14 @@
 """
 Сборка исходных данных проекта. Все суммы в рублях.
 
-Модель повторяет платёжные процессы iGaming-оператора: депозиты и выводы игроков
-через три PSP за сентябрь 2026. Названия PSP условные.
+Модель повторяет платёжные процессы российского онлайн-букмекера: депозиты и выводы
+игроков через три PSP за сентябрь 2026. Названия PSP условные.
 
 Что создаётся в папке data/:
   ledger.csv           — транзакции по внутреннему учёту
   psp_report.csv       — те же транзакции по отчётам PSP (с внесёнными расхождениями)
   balances.csv         — ожидаемый и фактический баланс на счёте у каждого PSP по дням
-  payments_weekly.csv  — агрегаты платежей по неделям, PSP, странам и типам операций
+  payments_weekly.csv  — агрегаты платежей по неделям, PSP, регионам и типам операций
 
 Запуск: python src/generate_data.py
 """
@@ -120,20 +120,20 @@ def balances():
 
 
 def payments():
-    countries = {"Бразилия": 1.0, "Нигерия": .6, "Сербия": .4}
+    regions = {"Москва": 1.0, "Другие регионы": .6, "Санкт-Петербург": .4}
     fee = {"PSP Alfa": (.022, .012), "PSP Beta": (.028, .015), "PSP Gamma": (.035, .02)}
     success = {"PSP Alfa": .93, "PSP Beta": .88, "PSP Gamma": .81}
     rows = []
     for w in ["2026-W36", "2026-W37", "2026-W38", "2026-W39"]:
         for p in PSP:
-            for c, cm in countries.items():
+            for c, cm in regions.items():
                 for typ in ["deposit", "withdrawal"]:
                     n = int(VOLUME[p] * 7 * cm * (1 if typ == "deposit" else .2) * rnd.uniform(.9, 1.1))
-                    sr = success[p] + rnd.uniform(-.03, .03) - (.05 if c == "Нигерия" else 0)
+                    sr = success[p] + rnd.uniform(-.03, .03) - (.05 if c == "Другие регионы" else 0)
                     ok = int(n * sr)
                     avg = rnd.uniform(3500, 5500) if typ == "deposit" else rnd.uniform(9000, 14000)
                     volume = money(ok * avg)
-                    rows.append(dict(week=w, psp=p, country=c, type=typ, transactions=n,
+                    rows.append(dict(week=w, psp=p, region=c, type=typ, transactions=n,
                                      successful=ok, failed=n - ok, volume_rub=volume,
                                      fee_rub=money(volume * fee[p][0 if typ == "deposit" else 1])))
     return rows
